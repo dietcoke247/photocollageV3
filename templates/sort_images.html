@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Arrange Images</title>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .image-container {
+            margin: 20px;
+            padding: 10px;
+            display: inline-block;
+            position: relative;
+        }
+        .image-placeholder {
+            width: 150px;
+            height: 150px;
+            cursor: move;
+        }
+        .sortable {
+            display: inline-block;
+            text-align: center;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .title-input {
+            width: 60%;
+            padding: 5px;
+            margin-top: 5px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Step 2: Arrange Images</h1>
+        <div id="sortable" class="sortable">
+            {% for image in images %}
+            <div class="image-container" id="{{ loop.index }}">
+                <img src="data:image/png;base64,{{ image.content|b64encode }}" class="image-placeholder">
+                <input type="text" class="title-input" placeholder="Enter Text">
+            </div>
+            {% endfor %}
+        </div>
+        <button id="generate-collage" class="btn">Generate Collage</button>
+
+        <form id="collage-form" method="POST" action="/generate_collage" enctype="multipart/form-data" style="display: none;">
+            {% for image in images %}
+            <input type="hidden" name="images" value="{{ image.content|b64encode }}">
+            {% endfor %}
+            <input type="hidden" name="positions" id="positions">
+            <input type="hidden" name="titles" id="titles">
+        </form>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script>
+        $(function() {
+            $("#sortable").sortable();
+
+            $("#generate-collage").click(function() {
+                let positions = [];
+                let titles = [];
+                $(".image-container").each(function() {
+                    let id = $(this).attr("id");
+                    let title = $(this).find(".title-input").val().trim();
+                    positions.push([id]);
+                    titles.push(title);
+                });
+                $("#positions").val(JSON.stringify(positions));
+                $("#titles").val(JSON.stringify(titles));
+                $("#collage-form").submit();
+            });
+        });
+    </script>
+</body>
+</html>

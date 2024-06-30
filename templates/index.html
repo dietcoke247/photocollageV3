@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload Images</title>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .upload-area {
+            margin: 20px;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            background-color: #333;
+            cursor: pointer;
+        }
+        .hidden-input {
+            display: none;
+        }
+        .btn {
+            padding: 10px 20px;
+            margin: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .next-btn {
+            padding: 10px 20px;
+            margin-top: 20px;
+            background-color: #ffc107;
+            color: black;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .next-btn:hover {
+            background-color: #e0a800;
+        }
+        .uploaded-message {
+            display: none;
+            margin: 20px;
+            color: #28a745;
+        }
+        .uploaded-images {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .uploaded-images img {
+            width: 50px;
+            height: 50px;
+            margin: 5px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Step 1: Upload Images</h1>
+        <div class="upload-area" id="upload-area" onclick="document.getElementById('image-input').click();">
+            Drag and Drop Images Here or Click to Upload
+        </div>
+        <input type="file" id="image-input" class="hidden-input" multiple>
+        <div class="uploaded-message" id="uploaded-message">
+            Images uploaded successfully!
+        </div>
+        <div class="uploaded-images" id="uploaded-images"></div>
+
+        <button class="next-btn" id="move-next">
+            Move to Step 2
+            <i class="arrow-right right"></i>
+        </button>
+
+        <form id="upload-form" method="POST" action="/process_images" enctype="multipart/form-data" style="display: none;">
+            <input type="file" name="images" id="form-image-input" multiple>
+        </form>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $('#image-input').change(function() {
+            let files = this.files;
+            $('#form-image-input').prop('files', files);
+            $('#uploaded-message').show();
+
+            let imageContainer = $('#uploaded-images');
+            imageContainer.empty();
+            for (let i = 0; i < files.length; i++) {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    let img = $('<img>').attr('src', e.target.result);
+                    imageContainer.append(img);
+                };
+                reader.readAsDataURL(files[i]);
+            }
+        });
+
+        $('#move-next').click(function() {
+            if ($('#uploaded-message').is(':visible')) {
+                $('#upload-form').submit();
+            } else {
+                alert('Please upload images before moving to step 2.');
+            }
+        });
+
+        $(document).on('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        $(document).on('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            let files = e.originalEvent.dataTransfer.files;
+            $('#form-image-input').prop('files', files);
+            $('#uploaded-message').show();
+
+            let imageContainer = $('#uploaded-images');
+            imageContainer.empty();
+            for (let i = 0; i < files.length; i++) {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    let img = $('<img>').attr('src', e.target.result);
+                    imageContainer.append(img);
+                };
+                reader.readAsDataURL(files[i]);
+            }
+        });
+    </script>
+</body>
+</html>
