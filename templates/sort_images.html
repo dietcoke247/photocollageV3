@@ -10,21 +10,55 @@
             color: white;
             font-family: Arial, sans-serif;
             text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section {
+            margin-bottom: 30px;
         }
         .image-container {
-            margin: 20px;
+            margin: 10px;
             padding: 10px;
             display: inline-block;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
             position: relative;
         }
         .image-placeholder {
             width: 150px;
             height: 150px;
             cursor: move;
+            display: block;
+            margin: 0 auto;
+            animation: shake 0.5s infinite;
         }
         .sortable {
-            display: inline-block;
-            text-align: center;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .title-input {
+            width: 150px;
+            padding: 5px;
+            margin-top: 5px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            display: block;
+            margin: 0 auto;
+        }
+        .options-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
         }
         .btn {
             padding: 10px 20px;
@@ -33,30 +67,107 @@
             color: white;
             border: none;
             cursor: pointer;
+            position: relative;
+            font-size: 18px;
+            border-radius: 5px;
         }
         .btn:hover {
             background-color: #0056b3;
         }
-        .title-input {
-            width: 60%;
-            padding: 5px;
-            margin-top: 5px;
-            box-sizing: border-box;
+        .btn.selected {
+            background-color: #0056b3;
+            position: relative;
+        }
+        .btn.selected::after {
+            content: '✔';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: white;
+            color: #007bff;
+            border-radius: 50%;
+            padding: 2px 5px;
+            font-size: 12px;
+        }
+        .btn-primary {
+            padding: 15px 30px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            border-radius: 5px;
+        }
+        .btn-primary:hover {
+            background-color: #218838;
+        }
+        @keyframes shake {
+            0%, 100% {
+                transform: translateX(0);
+            }
+            25% {
+                transform: translateX(-3px);
+            }
+            75% {
+                transform: translateX(3px);
+            }
+        }
+        .tooltip {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            animation: fadeInOut 4s ease-in-out forwards;
+        }
+        @keyframes fadeInOut {
+            0% {
+                opacity: 0;
+            }
+            10%, 90% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+        .section-title {
+            margin-bottom: 40px; /* Increased space */
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Step 2: Arrange Images</h1>
-        <div id="sortable" class="sortable">
+        <h1 class="section-title">Step 2: Arrange Images</h1>
+        <div class="section sortable" id="sortable">
             {% for image in images %}
             <div class="image-container" id="{{ loop.index }}">
                 <img src="data:image/png;base64,{{ image.content|b64encode }}" class="image-placeholder">
+                <div class="tooltip">Drag and Drop Me!</div>
                 <input type="text" class="title-input" placeholder="Enter Text">
             </div>
             {% endfor %}
         </div>
-        <button id="generate-collage" class="btn">Generate Collage</button>
+        <div class="options-container">
+            <div>
+                <h2>Select Arrangement</h2>
+                <button class="btn selected" id="horizontal">Horizontal</button>
+                <button class="btn" id="vertical">Vertical</button>
+            </div>
+        </div>
+        <div class="section">
+            <input type="checkbox" id="autoresize" name="autoresize">
+            <label for="autoresize">Auto-resize images to fit canvas</label>
+        </div>
+        <div class="section">
+            <button id="generate-collage" class="btn-primary">Generate Collage</button>
+        </div>
 
         <form id="collage-form" method="POST" action="/generate_collage" enctype="multipart/form-data" style="display: none;">
             {% for image in images %}
@@ -64,14 +175,43 @@
             {% endfor %}
             <input type="hidden" name="positions" id="positions">
             <input type="hidden" name="titles" id="titles">
+            <input type="hidden" name="autoresize" id="form-autoresize">
+            <input type="hidden" name="arrangement" id="arrangement" value="horizontal">
         </form>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
     <script>
+        let arrangement = 'horizontal'; // Default arrangement
+
         $(function() {
-            $("#sortable").sortable();
+            $("#sortable").sortable({
+                start: function(event, ui) {
+                    ui.item.find('.image-placeholder').removeClass('shake');
+                    ui.item.find('.tooltip').hide(); // Hide tooltip on drag
+                },
+                stop: function(event, ui) {
+                    ui.item.find('.image-placeholder').addClass('shake');
+                },
+                tolerance: "pointer",
+                opacity: 0.6,
+                cursor: "move"
+            });
+
+            $("#horizontal").click(function() {
+                arrangement = 'horizontal';
+                $("#horizontal").addClass('selected');
+                $("#vertical").removeClass('selected');
+                $("#arrangement").val('horizontal');
+            });
+
+            $("#vertical").click(function() {
+                arrangement = 'vertical';
+                $("#vertical").addClass('selected');
+                $("#horizontal").removeClass('selected');
+                $("#arrangement").val('vertical');
+            });
 
             $("#generate-collage").click(function() {
                 let positions = [];
@@ -82,10 +222,23 @@
                     positions.push([id]);
                     titles.push(title);
                 });
+
+                // Set the autoresize and arrangement values
+                let autoresize = $("#autoresize").is(":checked");
+                $("#form-autoresize").val(autoresize);
+                $("#arrangement").val(arrangement);
+
                 $("#positions").val(JSON.stringify(positions));
                 $("#titles").val(JSON.stringify(titles));
                 $("#collage-form").submit();
             });
+
+            // Start shaking animation when the page loads
+            $(".image-placeholder").addClass('shake');
+            setTimeout(function() {
+                $(".tooltip").css('opacity', '0');
+                $(".tooltip").hide(); // Hide the tooltip after 4 seconds
+            }, 4000); // Hide the tooltip after 4 seconds
         });
     </script>
 </body>
