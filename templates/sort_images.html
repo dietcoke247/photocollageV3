@@ -148,7 +148,7 @@
         <div class="section sortable" id="sortable">
             {% for image in images %}
             <div class="image-container" id="{{ loop.index }}">
-                <img src="data:image/png;base64,{{ image.content|b64encode }}" class="image-placeholder">
+                <img src="data:image/png;base64,{{ image.content }}" class="image-placeholder">
                 <div class="tooltip">Drag and Drop Me!</div>
                 <input type="text" class="title-input" placeholder="Enter Text">
             </div>
@@ -166,16 +166,21 @@
             <label for="autoresize">Auto-resize images to fit canvas</label>
         </div>
         <div class="section">
+            <input type="checkbox" id="phone-placeholder" name="phone_placeholder">
+            <label for="phone-placeholder">Use Phone Placeholder</label>
+        </div>
+        <div class="section">
             <button id="generate-collage" class="btn-primary">Generate Collage</button>
         </div>
 
         <form id="collage-form" method="POST" action="/generate_collage" enctype="multipart/form-data" style="display: none;">
             {% for image in images %}
-            <input type="hidden" name="images" value="{{ image.content|b64encode }}">
+            <input type="hidden" name="images" value="{{ image.content }}">
             {% endfor %}
             <input type="hidden" name="positions" id="positions">
             <input type="hidden" name="titles" id="titles">
             <input type="hidden" name="autoresize" id="form-autoresize">
+            <input type="hidden" name="phone_placeholder" id="form-phone-placeholder">
             <input type="hidden" name="arrangement" id="arrangement" value="horizontal">
         </form>
     </div>
@@ -225,7 +230,9 @@
 
                 // Set the autoresize and arrangement values
                 let autoresize = $("#autoresize").is(":checked");
+                let phonePlaceholder = $("#phone-placeholder").is(":checked");
                 $("#form-autoresize").val(autoresize);
+                $("#form-phone-placeholder").val(phonePlaceholder);
                 $("#arrangement").val(arrangement);
 
                 $("#positions").val(JSON.stringify(positions));
