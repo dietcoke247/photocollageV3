@@ -119,7 +119,7 @@ def create_collage(images_with_titles, autoresize, arrangement):
             font_path = "/Library/Fonts/Arial.ttf"
             if not os.path.exists(font_path):
                 font_path = "/System/Library/Fonts/Supplemental/Arial.ttf"
-            font = ImageFont.truetype(font_path, 65)
+            font = ImageFont.truetype(font_path, 200)
         except IOError:
             font = ImageFont.load_default()
 
