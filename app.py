@@ -106,7 +106,7 @@ def create_collage(images_with_titles, autoresize, arrangement):
         
         margin = 10
         padding = 40
-        bottom_padding = 80  # Increased bottom padding for better spacing
+        bottom_padding = 60  # Increased bottom padding for better spacing
         max_width = max(image.width for image in images)
         max_height = max(image.height for image in images)
 
@@ -118,8 +118,8 @@ def create_collage(images_with_titles, autoresize, arrangement):
         try:
             font_path = "/Library/Fonts/Arial.ttf"
             if not os.path.exists(font_path):
-                font_path = "/System/Library/Fonts/Supplemental/Arial.ttf"
-            font = ImageFont.truetype(font_path, 200)
+                font_path = "Ubuntu-Medium.ttf"
+            font = ImageFont.truetype(font_path, 35)
         except IOError:
             font = ImageFont.load_default()
 
