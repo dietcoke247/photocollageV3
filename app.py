@@ -34,28 +34,39 @@ def process_images():
 @app.route('/generate_collage', methods=['POST'])
 def generate_collage():
     try:
+        # Parse the form data
         positions = json.loads(request.form.get('positions'))
         titles = json.loads(request.form.get('titles'))
         autoresize = request.form.get('autoresize') == 'true'
-        phone_placeholder = request.form.get('phone_placeholder') == 'true'
+        phone_placeholder = request.form.get('phone_placeholder') == 'true'  # Correct field name
         arrangement = request.form.get('arrangement')
+        images = json.loads(request.form.get('images'))  # Decode the images list
 
         # Debugging: Print positions and other details
         print("Positions:", positions)
         print("Positions Type:", type(positions))
         print("Titles:", titles)
         print("Autoresize:", autoresize)
-        print("Phone Placeholder:", phone_placeholder)
+        print("Phone Placeholder:", phone_placeholder)  # Check if this is correctly set
         print("Arrangement:", arrangement)
+        print("Images:", images)
 
-        images = []
+        if not images:
+            print("Error: No images were provided.")
+            return "No images were provided", 400
+
+        image_objects = []
         for pos in positions:
-            if isinstance(pos, list):
-                pos = pos[0]  # Extract the single string element from the sublist
-            img_content = base64.b64decode(request.form.getlist('images')[int(pos)-1])
-            images.append(img_content)
+            try:
+                img_content = base64.b64decode(images[int(pos['index'])])
+                image_objects.append(Image.open(io.BytesIO(img_content)).convert("RGBA"))
+            except IndexError as e:
+                print(f"Error occurred: {e}")
+                return f"Index {pos['index']} out of range for available images", 500
 
-        image_objects = [Image.open(io.BytesIO(img_content)).convert("RGBA") for img_content in images]
+        if not image_objects:
+            print("Error: No images were decoded.")
+            return "No images were decoded", 500
 
         if phone_placeholder:
             phone_placeholder_image = Image.open("phone_placeholder.png").convert("RGBA")
@@ -76,22 +87,24 @@ def generate_collage():
         else:
             processed_images = [(img, title) for img, title in zip(image_objects, titles)]
 
+        # Create the collage
         collage_image = create_collage(processed_images, autoresize, arrangement)
 
-        # Debugging: Check if collage_image is None
         if collage_image is None:
-            print("Collage image is None!")
-        else:
-            print("Collage image created successfully.")
+            print("Error: Collage image creation failed.")
+            return "Collage image creation failed", 500
 
         buffer = io.BytesIO()
         collage_image.save(buffer, format="PNG")
         encoded_collage = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
         return render_template('download.html', image_data=encoded_collage)
+
     except Exception as e:
-        print(f"Error occurred: {e}")
+        print(f"Unexpected error occurred: {e}")
         return f"An error occurred: {e}", 500
+
+
 
 def create_collage(images_with_titles, autoresize, arrangement):
     try:
@@ -103,7 +116,7 @@ def create_collage(images_with_titles, autoresize, arrangement):
         if not images:
             print("No images processed correctly.")
             return None
-        
+
         margin = 10
         padding = 40
         bottom_padding = 60  # Increased bottom padding for better spacing

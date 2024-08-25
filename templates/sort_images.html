@@ -148,104 +148,84 @@
         <div class="section sortable" id="sortable">
             {% for image in images %}
             <div class="image-container" id="{{ loop.index }}">
-                <img src="data:image/png;base64,{{ image.content }}" class="image-placeholder">
-                <div class="tooltip">Drag and Drop Me!</div>
+                <img src="data:image/png;base64,{{ image['content'] }}" alt="Image" class="image-placeholder">
                 <input type="text" class="title-input" placeholder="Enter Text">
+                <div class="tooltip">Drag & Drop to Re-arrange</div>
             </div>
             {% endfor %}
-        </div>
-        <div class="options-container">
-            <div>
-                <h2>Select Arrangement</h2>
-                <button class="btn selected" id="horizontal">Horizontal</button>
-                <button class="btn" id="vertical">Vertical</button>
-            </div>
-        </div>
-        <div class="section">
-            <input type="checkbox" id="autoresize" name="autoresize">
-            <label for="autoresize">Auto-resize images to fit canvas</label>
-        </div>
-        <div class="section">
-            <input type="checkbox" id="phone-placeholder" name="phone_placeholder">
-            <label for="phone-placeholder">Use Phone Placeholder</label>
-        </div>
-        <div class="section">
-            <button id="generate-collage" class="btn-primary">Generate Collage</button>
         </div>
 
-        <form id="collage-form" method="POST" action="/generate_collage" enctype="multipart/form-data" style="display: none;">
-            {% for image in images %}
-            <input type="hidden" name="images" value="{{ image.content }}">
-            {% endfor %}
-            <input type="hidden" name="positions" id="positions">
-            <input type="hidden" name="titles" id="titles">
-            <input type="hidden" name="autoresize" id="form-autoresize">
-            <input type="hidden" name="phone_placeholder" id="form-phone-placeholder">
-            <input type="hidden" name="arrangement" id="arrangement" value="horizontal">
-        </form>
+        <div class="section options-container">
+            <button class="btn selected" id="horizontal">Horizontal</button>
+            <button class="btn" id="vertical">Vertical</button>
+            <div>
+                <label><input type="checkbox" id="autoresize"> Auto-resize images to fit canvas</label>
+                <br>
+                <label><input type="checkbox" id="phonePlaceholder"> Place images inside mobile placeholder</label>
+            </div>
+        </div>
+
+        <button class="btn-primary" id="generate-collage">Generate Collage</button>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
     <script>
-        let arrangement = 'horizontal'; // Default arrangement
-
-        $(function() {
+        $(document).ready(function() {
+            // Initialize sortable
             $("#sortable").sortable({
-                start: function(event, ui) {
-                    ui.item.find('.image-placeholder').removeClass('shake');
-                    ui.item.find('.tooltip').hide(); // Hide tooltip on drag
-                },
                 stop: function(event, ui) {
-                    ui.item.find('.image-placeholder').addClass('shake');
-                },
-                tolerance: "pointer",
-                opacity: 0.6,
-                cursor: "move"
+                    ui.item.children(".tooltip").remove();
+                }
             });
 
-            $("#horizontal").click(function() {
-                arrangement = 'horizontal';
-                $("#horizontal").addClass('selected');
-                $("#vertical").removeClass('selected');
-                $("#arrangement").val('horizontal');
+            // Toggle buttons for Horizontal and Vertical
+            $('.btn').click(function() {
+                $('.btn').removeClass('selected');
+                $(this).addClass('selected');
             });
 
-            $("#vertical").click(function() {
-                arrangement = 'vertical';
-                $("#vertical").addClass('selected');
-                $("#horizontal").removeClass('selected');
-                $("#arrangement").val('vertical');
-            });
+            // Tooltip shown only once on load
+            $('.tooltip').fadeIn().delay(3000).fadeOut();
 
-            $("#generate-collage").click(function() {
-                let positions = [];
-                let titles = [];
-                $(".image-container").each(function() {
-                    let id = $(this).attr("id");
-                    let title = $(this).find(".title-input").val().trim();
-                    positions.push([id]);
-                    titles.push(title);
-                });
+            // Generate collage button click
+            $('#generate-collage').click(function() {
+    let positions = [];
+    let titles = [];
+    let images = [];
 
-                // Set the autoresize and arrangement values
-                let autoresize = $("#autoresize").is(":checked");
-                let phonePlaceholder = $("#phone-placeholder").is(":checked");
-                $("#form-autoresize").val(autoresize);
-                $("#form-phone-placeholder").val(phonePlaceholder);
-                $("#arrangement").val(arrangement);
+    // Collect positions and titles from the sortable list
+    $('#sortable .image-container').each(function(index) {
+        let position = $(this).position();
+        positions.push({ top: position.top, left: position.left, index: index });
+        titles.push($(this).find('.title-input').val());
+    });
 
-                $("#positions").val(JSON.stringify(positions));
-                $("#titles").val(JSON.stringify(titles));
-                $("#collage-form").submit();
-            });
+    // Collect image data
+    $('#sortable .image-container img').each(function() {
+        images.push($(this).attr('src').split(',')[1]); // Get base64 part only
+    });
 
-            // Start shaking animation when the page loads
-            $(".image-placeholder").addClass('shake');
-            setTimeout(function() {
-                $(".tooltip").css('opacity', '0');
-                $(".tooltip").hide(); // Hide the tooltip after 4 seconds
-            }, 4000); // Hide the tooltip after 4 seconds
+    let data = {
+        positions: JSON.stringify(positions),
+        titles: JSON.stringify(titles),
+        autoresize: $('#autoresize').is(':checked'),
+        phone_placeholder: $('#phonePlaceholder').is(':checked'),  // Correct field name
+        arrangement: $('.btn.selected').attr('id'),
+        images: JSON.stringify(images)  // Pass images as a JSON string
+    };
+
+    $.post('/generate_collage', data, function(response) {
+        // Handle response
+        $('body').html(response);
+    }).fail(function(xhr, status, error) {
+        console.error("Error in AJAX request:", xhr.responseText);
+        alert("Error generating collage: " + xhr.responseText);
+    });
+});
+
+
+
         });
     </script>
 </body>

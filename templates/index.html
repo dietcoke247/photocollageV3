@@ -3,119 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <title>Upload Images</title>
-    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <style>
         body {
-            background-color: black;
-            color: white;
             font-family: Arial, sans-serif;
             text-align: center;
+            background-color: black;
+            color: white;
+            margin: 0;
+            padding: 0;
         }
+
         .container {
-            width: 80%;
+            max-width: 800px;
             margin: 0 auto;
-            text-align: center;
-        }
-        .upload-area {
-            margin: 20px;
             padding: 20px;
-            border: 2px dashed #ccc;
-            background-color: #333;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        #dropzone {
+            width: 100%;
+            height: 200px;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            margin-bottom: 20px;
             cursor: pointer;
         }
-        .hidden-input {
-            display: none;
+
+        #uploaded-images {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
         }
+
+        .image-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        #uploaded-images img {
+            max-width: 100px;
+            max-height: 100px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            padding: 2px 5px;
+            font-size: 14px;
+        }
+
+        #uploaded-message {
+            display: none;
+            color: green;
+            margin-bottom: 20px;
+        }
+
         .btn {
             padding: 10px 20px;
-            margin: 10px;
             background-color: #007bff;
             color: white;
             border: none;
             cursor: pointer;
+            font-size: 18px;
+            border-radius: 5px;
         }
+
         .btn:hover {
             background-color: #0056b3;
         }
-        .next-btn {
-            padding: 10px 20px;
-            margin-top: 20px;
-            background-color: #ffc107;
-            color: black;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .next-btn:hover {
-            background-color: #e0a800;
-        }
-        .uploaded-message {
-            display: none;
-            margin: 20px;
-            color: #28a745;
-        }
-        .uploaded-images {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 20px;
-        }
-        .uploaded-images img {
-            width: 50px;
-            height: 50px;
-            margin: 5px;
-            border: 1px solid #ccc;
-        }
     </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 </head>
 <body>
     <div class="container">
         <h1>Step 1: Upload Images</h1>
-        <div class="upload-area" id="upload-area" onclick="document.getElementById('image-input').click();">
-            Drag and Drop Images Here or Click to Upload
-        </div>
-        <input type="file" id="image-input" class="hidden-input" multiple>
-        <div class="uploaded-message" id="uploaded-message">
-            Images uploaded successfully!
-        </div>
-        <div class="uploaded-images" id="uploaded-images"></div>
+        <div id="dropzone">Drag & Drop or Paste Images Here</div>
+        <div id="uploaded-images"></div>
+        <div id="uploaded-message">Images uploaded successfully!</div>
+        <button class="btn" id="move-next">Move to Step 2</button>
 
-        <button class="next-btn" id="move-next">
-            Move to Step 2
-            <i class="arrow-right right"></i>
-        </button>
-
-        <form id="upload-form" method="POST" action="/process_images" enctype="multipart/form-data" style="display: none;">
-            <input type="file" name="images" id="form-image-input" multiple>
+        <form id="upload-form" action="/process_images" method="POST" enctype="multipart/form-data" style="display: none;">
+            <input type="file" id="image-input" name="images" multiple accept="image/*">
+            <input type="hidden" id="form-image-input" name="image_data">
         </form>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        $('#image-input').change(function() {
-            let files = this.files;
-            $('#form-image-input').prop('files', files);
-            $('#uploaded-message').show();
+        let dataTransfer = new DataTransfer();
 
-            let imageContainer = $('#uploaded-images');
-            imageContainer.empty();
-            for (let i = 0; i < files.length; i++) {
-                let reader = new FileReader();
-                reader.onload = function(e) {
-                    let img = $('<img>').attr('src', e.target.result);
-                    imageContainer.append(img);
-                };
-                reader.readAsDataURL(files[i]);
+        $('#dropzone').on('click', function() {
+            $('#image-input').click();
+        });
+
+        // Handle file input change
+        $('#image-input').change(function() {
+            handleFiles(this.files);
+        });
+
+        // Handle drop event
+        $(document).on('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            let files = e.originalEvent.dataTransfer.files;
+            handleFiles(files);
+        });
+
+        // Handle paste event
+        $(document).on('paste', function(e) {
+            let clipboardItems = e.originalEvent.clipboardData.items;
+            let files = [];
+            for (let item of clipboardItems) {
+                if (item.type.indexOf('image') !== -1) {
+                    files.push(item.getAsFile());
+                }
+            }
+            if (files.length > 0) {
+                handleFiles(files);
             }
         });
 
+        // Function to handle files
+        function handleFiles(files) {
+            for (let i = 0; i < files.length; i++) {
+                dataTransfer.items.add(files[i]);
+
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    let imgWrapper = $('<div class="image-wrapper">');
+                    let img = $('<img>').attr('src', e.target.result);
+                    let removeBtn = $('<button class="remove-btn">&times;</button>').click(function() {
+                        $(this).parent().remove();
+                        removeImageFromDataTransfer(i);
+                    });
+                    imgWrapper.append(img).append(removeBtn);
+                    $('#uploaded-images').append(imgWrapper);
+                };
+                reader.readAsDataURL(files[i]);
+            }
+
+            $('#form-image-input').prop('files', dataTransfer.files);
+            $('#uploaded-message').show();
+        }
+
+        // Function to remove image from DataTransfer object
+        function removeImageFromDataTransfer(index) {
+            dataTransfer.items.remove(index);
+            $('#form-image-input').prop('files', dataTransfer.files);
+        }
+
         $('#move-next').click(function() {
             if ($('#uploaded-message').is(':visible')) {
-                $('#upload-form').submit();
+                let images = [];
+                for (let i = 0; i < dataTransfer.files.length; i++) {
+                    images.push(dataTransfer.files[i]);
+                }
+                if (images.length > 0) {
+                    let formData = new FormData();
+                    for (let i = 0; i < images.length; i++) {
+                        formData.append('images', images[i]);
+                    }
+                    $.ajax({
+                        url: '/process_images',
+                        type: 'POST',
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function(response) {
+                            $('body').html(response);
+                        },
+                        error: function(xhr, status, error) {
+                            alert('An error occurred while processing images.');
+                        }
+                    });
+                }
             } else {
                 alert('Please upload images before moving to step 2.');
             }
@@ -126,23 +206,10 @@
             e.stopPropagation();
         });
 
-        $(document).on('drop', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            let files = e.originalEvent.dataTransfer.files;
-            $('#form-image-input').prop('files', files);
-            $('#uploaded-message').show();
-
-            let imageContainer = $('#uploaded-images');
-            imageContainer.empty();
-            for (let i = 0; i < files.length; i++) {
-                let reader = new FileReader();
-                reader.onload = function(e) {
-                    let img = $('<img>').attr('src', e.target.result);
-                    imageContainer.append(img);
-                };
-                reader.readAsDataURL(files[i]);
-            }
+        // Initialize sortable
+        $(function() {
+            $("#uploaded-images").sortable();
+            $("#uploaded-images").disableSelection();
         });
     </script>
 </body>
