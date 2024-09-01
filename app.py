@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, send_file
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 import io
 import os
 import base64
@@ -38,7 +38,7 @@ def generate_collage():
         positions = json.loads(request.form.get('positions'))
         titles = json.loads(request.form.get('titles'))
         autoresize = request.form.get('autoresize') == 'true'
-        phone_placeholder = request.form.get('phone_placeholder') == 'true'  # Correct field name
+        phone_placeholder = request.form.get('phone_placeholder') == 'true'
         arrangement = request.form.get('arrangement')
         images = json.loads(request.form.get('images'))  # Decode the images list
 
@@ -47,7 +47,7 @@ def generate_collage():
         print("Positions Type:", type(positions))
         print("Titles:", titles)
         print("Autoresize:", autoresize)
-        print("Phone Placeholder:", phone_placeholder)  # Check if this is correctly set
+        print("Phone Placeholder:", phone_placeholder)
         print("Arrangement:", arrangement)
         print("Images:", images)
 
@@ -69,8 +69,9 @@ def generate_collage():
             return "No images were decoded", 500
 
         if phone_placeholder:
+            # Load higher resolution device mockup
             phone_placeholder_image = Image.open("phone_placeholder.png").convert("RGBA")
-            screen_left, screen_upper, screen_right, screen_lower = 20, 35, 485, 1020
+            screen_left, screen_upper, screen_right, screen_lower = 40, 50, 1000, 2180
             screen_width, screen_height = screen_right - screen_left, screen_lower - screen_upper
             radius = 50
             mask = Image.new("L", (screen_width, screen_height), 0)
@@ -79,7 +80,7 @@ def generate_collage():
 
             processed_images = []
             for img, title in zip(image_objects, titles):
-                img = img.resize((screen_width, screen_height))
+                img = img.resize((screen_width, screen_height), Image.LANCZOS)
                 img.putalpha(mask)
                 combined = phone_placeholder_image.copy()
                 combined.paste(img, (screen_left, screen_upper), img)
@@ -94,8 +95,24 @@ def generate_collage():
             print("Error: Collage image creation failed.")
             return "Collage image creation failed", 500
 
+        # Apply image enhancements
+        enhancer = ImageEnhance.Contrast(collage_image)
+        collage_image = enhancer.enhance(1.2)  # Increase contrast
+
+        enhancer = ImageEnhance.Color(collage_image)
+        collage_image = enhancer.enhance(1.1)  # Enhance color
+
+        # Optional: Add screen reflection
+        try:
+            reflection = Image.open("reflection_overlay.png").convert("RGBA")
+            reflection = reflection.resize(collage_image.size)
+            collage_image = Image.alpha_composite(collage_image, reflection)
+        except FileNotFoundError:
+            print("Reflection overlay not found. Skipping this step.")
+
+        # Save the final image with higher DPI
         buffer = io.BytesIO()
-        collage_image.save(buffer, format="PNG")
+        collage_image.save(buffer, format="PNG", dpi=(300, 300))  # Set higher DPI for better quality
         encoded_collage = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
         return render_template('download.html', image_data=encoded_collage)
@@ -103,7 +120,6 @@ def generate_collage():
     except Exception as e:
         print(f"Unexpected error occurred: {e}")
         return f"An error occurred: {e}", 500
-
 
 
 def create_collage(images_with_titles, autoresize, arrangement):
@@ -124,7 +140,7 @@ def create_collage(images_with_titles, autoresize, arrangement):
         max_height = max(image.height for image in images)
 
         if autoresize:
-            resized_images = [image.resize((max_width, max_height)) for image in images]
+            resized_images = [image.resize((max_width, max_height), Image.LANCZOS) for image in images]
         else:
             resized_images = images
 
